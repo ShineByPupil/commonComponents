@@ -5,7 +5,7 @@
 // @license      GPL-3.0
 // @description  通用 UI 组件和工具函数库
 // @author       ShineByPupil
-// @exclude      *
+// @match        *
 // @grant        none
 // ==/UserScript==
 
