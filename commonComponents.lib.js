@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         通用 UI 组件和工具函数库
+// @name         通用组件库
 // @namespace    https://greasyfork.org/zh-CN/users/1296281
 // @version      1.0.0
 // @license      GPL-3.0
