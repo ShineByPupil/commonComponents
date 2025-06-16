@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Title</title>
+
+    <style>
+      html.dark {
+        background-color: #141414;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <label>
+        主题色
+        <mx-switch onchange="handleChange(event.detail)"></mx-switch>
+        <mx-switch disabled onchange="handleChange(event.detail)"></mx-switch>
+      </label>
+    </div>
+
+    <div>
+      <mx-input
+        placeholder="111"
+        oninput="handleInput(event.detail)"
+      ></mx-input>
+
+      <mx-button onclick="handleClick()">你好</mx-button>
+      <mx-button type="primary" onclick="handleClick()">你好</mx-button>
+      <mx-button type="success" onclick="handleClick()">你好</mx-button>
+      <mx-button type="info" onclick="handleClick()">你好</mx-button>
+      <mx-button type="warning" onclick="handleClick()">你好</mx-button>
+      <mx-button type="danger" onclick="handleClick()">你好</mx-button>
+    </div>
+
+    <div>
+      <mx-button onclick="openDialog()">打开弹窗</mx-button>
+
+      <mx-dialog id="dialog">
+        <span slot="header">Tips</span>
+
+        <span>This is a message</span>
+
+        <mx-button slot="button-before">before</mx-button>
+
+        <template slot="button-center">
+          <mx-button>center</mx-button>
+          <mx-button>center</mx-button>
+        </template>
+
+        <mx-button slot="button-after">after</mx-button>
+      </mx-dialog>
+    </div>
+  </body>
+
+  <script src="commonComponents.lib.js"></script>
+
+  <script>
+    let txt = "";
+    window.txt = txt;
+
+    function handleChange({ value }) {
+      const html = document.documentElement;
+
+      html.classList.toggle("dark");
+      console.log(value);
+    }
+
+    function handleInput(value) {
+      console.log("input 事件:", value);
+    }
+
+    function handleClick() {
+      console.log("handleClick:");
+    }
+
+    function openDialog() {
+      document.querySelector("#dialog")?.open();
+    }
+  </script>
+</html>
