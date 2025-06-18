@@ -83,6 +83,7 @@
         --box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, .04), 0px 8px 20px rgba(0, 0, 0, .08);
         --placeholder-color: #a8abb2;
       }
+      :host-context(.ex),
       :host-context(.dark),
       :host-context([data-theme="dark"]) {
         ${darkColors.join("\n")}
@@ -393,40 +394,42 @@
 
   class MessageBox extends HTMLElement {
     static #instance = null;
+    static observedAttributes = ["type"];
 
     constructor() {
       super();
 
+      this.type = this.getAttribute("type");
+
       const htmlTemplate = document.createElement("template");
-      htmlTemplate.innerHTML = `<div class="message-box"></div>`;
+      htmlTemplate.innerHTML = `
+        <div class="message-box">
+          <mx-icon class="icon"></mx-icon>
+          <span class="message"></span>
+        </div>
+      `;
 
       const cssTemplate = document.createElement("template");
       cssTemplate.innerHTML = `
         <style>
-          :host([type='primary']) {
-            --text-color: var(--primary-color);
-            --bg-color: var(--primary-color-light-9);
-            --border-color: var(--primary-color-light-8);
-          }
-          :host([type='info']) {
-            --text-color: var(--info-color);
-            --bg-color: var(--info-color-light-9);
-            --border-color: var(--info-color-light-8);
-          }
-          :host([type='success']) {
-            --text-color: var(--success-color);
-            --bg-color: var(--success-color-light-9);
-            --border-color: var(--success-color-light-8);
-          }
-          :host([type='error']) {
-            --text-color: var(--danger-color);
-            --bg-color: var(--danger-color-light-9);
-            --border-color: var(--danger-color-light-8);
-          }
+          ${Object.keys(colors)
+            .map((type) => {
+              return `
+                :host([type='${type}']) {
+                  --text-color: var(--${type}-color);
+                  --bg-color: var(--${type}-color-light-7);
+                  --border-color: var(--${type}-color-light-4);
+                }
+              `;
+            })
+            .join("\n")}
           
           .message-box {
+            max-width: 300px;
             font-size: 14px;
             display: none;
+            align-items: center;
+            gap: 8px;
             position: fixed;
             top: 20px;
             left: 50%;
@@ -435,7 +438,7 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             border: 1px solid var(--border-color);
-            padding: 10px 20px;
+            padding: 10px 15px;
             border-radius: 5px;
             z-index: 100;
             
@@ -461,44 +464,76 @@
         cssTemplate.content,
       );
 
-      this.message = this.shadowRoot.querySelector(".message-box");
+      this.box = this.shadowRoot.querySelector(".message-box");
+      this.icon = this.shadowRoot.querySelector(".icon");
+      this.message = this.shadowRoot.querySelector(".message");
     }
 
     connectedCallback() {
-      this.message.addEventListener("transitionend", (e) => {
-        if (this.message.classList.contains("hide")) {
-          this.message.style.display = "none";
-          this.message.classList.remove("hide");
+      this.box.addEventListener("transitionend", (e) => {
+        if (this.box.classList.contains("hide")) {
+          this.box.style.display = "none";
+          this.box.classList.remove("hide");
         }
       });
+
+      this.message.addEventListener("click", (e) => {
+        navigator.clipboard.writeText(e.target.textContent);
+      });
+    }
+
+    attributeChangedCallback(attrName, oldVal, newVal) {
+      if (attrName === "type") {
+        const map = {
+          primary: "info",
+          success: "success",
+          info: "info",
+          warning: "warning",
+          danger: "close",
+        };
+        const iconType = map[newVal];
+        this.icon.setAttribute("type", iconType);
+      }
     }
 
     static get instance() {
       if (!MessageBox.#instance) {
         const el = document.createElement("mx-message-box");
-        document.body.appendChild(el);
+        document.documentElement.appendChild(el);
         MessageBox.#instance = el;
       }
       return MessageBox.#instance;
     }
 
-    #show(message, type = "info", duration = 2500) {
+    #show(message, type = "info", duration) {
+      const calcDuration = (message) => {
+        // 最小 2 秒, 最大 5 秒, 基础 0.5 秒, 每个字符 50 ms
+        const [min, max, base, perChar] = [2000, 5000, 500, 50];
+        const lengthTime = message.length * perChar;
+
+        return Math.min(max, Math.max(min, base + lengthTime));
+      };
+
       this.setAttribute("type", type);
       this.message.textContent = message; // 设置信息
+      this.message.title = message;
 
-      this.message.style.display = "block";
+      this.box.style.display = "flex";
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          this.message.classList.add("show");
+          this.box.classList.add("show");
         });
       });
 
       clearTimeout(this._hideTimer);
-      this._hideTimer = setTimeout(() => {
-        this.message.classList.remove("show");
-        this.message.classList.add("hide");
-      }, duration);
+      this._hideTimer = setTimeout(
+        () => {
+          this.box.classList.remove("show");
+          this.box.classList.add("hide");
+        },
+        duration || calcDuration(message),
+      );
     }
 
     primary(message, duration) {
@@ -511,7 +546,10 @@
       this.#show(message, "success", duration);
     }
     error(message, duration) {
-      this.#show(message, "error", duration);
+      this.#show(message, "danger", duration);
+    }
+    warning(message, duration) {
+      this.#show(message, "warning", duration);
     }
   }
 
@@ -679,16 +717,85 @@
     }
   }
 
-  // 注册组件
-  [Input, Select, Button, Option, Switch, MessageBox, Dialog].forEach((n) => {
-    const name = `mx-${n.name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()}`;
+  class Icon extends HTMLElement {
+    #paths = {
+      info: "M512 64a448 448 0 1 1 0 896.064A448 448 0 0 1 512 64m67.2 275.072c33.28 0 60.288-23.104 60.288-57.344s-27.072-57.344-60.288-57.344c-33.28 0-60.16 23.104-60.16 57.344s26.88 57.344 60.16 57.344M590.912 699.2c0-6.848 2.368-24.64 1.024-34.752l-52.608 60.544c-10.88 11.456-24.512 19.392-30.912 17.28a12.992 12.992 0 0 1-8.256-14.72l87.68-276.992c7.168-35.136-12.544-67.2-54.336-71.296-44.096 0-108.992 44.736-148.48 101.504 0 6.784-1.28 23.68.064 33.792l52.544-60.608c10.88-11.328 23.552-19.328 29.952-17.152a12.8 12.8 0 0 1 7.808 16.128L388.48 728.576c-10.048 32.256 8.96 63.872 55.04 71.04 67.84 0 107.904-43.648 147.456-100.416z",
+      success:
+        "M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896m-55.808 536.384-99.52-99.584a38.4 38.4 0 1 0-54.336 54.336l126.72 126.72a38.272 38.272 0 0 0 54.336 0l262.4-262.464a38.4 38.4 0 1 0-54.272-54.336z",
+      warning:
+        "M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896m0 192a58.432 58.432 0 0 0-58.24 63.744l23.36 256.384a35.072 35.072 0 0 0 69.76 0l23.296-256.384A58.432 58.432 0 0 0 512 256m0 512a51.2 51.2 0 1 0 0-102.4 51.2 51.2 0 0 0 0 102.4",
+      close:
+        "M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896m0 393.664L407.936 353.6a38.4 38.4 0 1 0-54.336 54.336L457.664 512 353.6 616.064a38.4 38.4 0 1 0 54.336 54.336L512 566.336 616.064 670.4a38.4 38.4 0 1 0 54.336-54.336L566.336 512 670.4 407.936a38.4 38.4 0 1 0-54.336-54.336z",
+    };
 
-    if (!customElements.get(name)) {
-      customElements.define(name, n);
-    } else {
-      console.error(`${name} 组件已注册`);
+    static observedAttributes = ["type"];
+
+    constructor() {
+      super();
+
+      const htmlTemplate = document.createElement("template");
+      htmlTemplate.innerHTML = `<svg viewBox="0 0 1024 1024"><path d=""></path></svg>`;
+
+      const cssTemplate = document.createElement("template");
+      cssTemplate.innerHTML = `
+        <style>
+          :host {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            color: currentColor;
+          }
+          svg {
+            width: 100%;
+            height: 100%;
+            fill: currentColor;
+          }
+        </style>
+      `;
+
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.append(
+        htmlTemplate.content,
+        commonCssTemplate.content.cloneNode(true),
+        cssTemplate.content,
+      );
+
+      this.path = this.shadowRoot.querySelector("path");
     }
-  });
+
+    connectedCallback() {}
+
+    attributeChangedCallback(attributeName, oldValue, newValue) {
+      if (attributeName === "type") {
+        this.toggle();
+      }
+    }
+
+    toggle() {
+      if (this.hasAttribute("type")) {
+        this.type = this.getAttribute("type");
+
+        if (this.type in this.#paths) {
+          this.path.setAttribute("d", this.#paths[this.type]);
+        } else {
+          console.warn("出现未知的 icon 类型", this);
+        }
+      }
+    }
+  }
+
+  // 注册组件
+  [Input, Select, Button, Option, Switch, MessageBox, Dialog, Icon].forEach(
+    (n) => {
+      const name = `mx-${n.name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()}`;
+
+      if (!customElements.get(name)) {
+        customElements.define(name, n);
+      } else {
+        console.error(`${name} 组件已注册`);
+      }
+    },
+  );
 
   window.MxMessageBox = MessageBox.instance;
 })();

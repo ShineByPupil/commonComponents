@@ -11,7 +11,7 @@
     </style>
   </head>
   <body>
-    <div>
+    <div class="switch">
       <label>
         主题色
         <mx-switch onchange="handleChange(event.detail)"></mx-switch>
@@ -19,21 +19,31 @@
       </label>
     </div>
 
-    <div>
+    <div class="button">
       <mx-input
         placeholder="111"
         oninput="handleInput(event.detail)"
       ></mx-input>
 
       <mx-button onclick="handleClick()">你好</mx-button>
-      <mx-button type="primary" onclick="handleClick()">你好</mx-button>
-      <mx-button type="success" onclick="handleClick()">你好</mx-button>
-      <mx-button type="info" onclick="handleClick()">你好</mx-button>
-      <mx-button type="warning" onclick="handleClick()">你好</mx-button>
-      <mx-button type="danger" onclick="handleClick()">你好</mx-button>
+      <mx-button type="primary" onclick="MxMessageBox.primary('primary')"
+        >你好</mx-button
+      >
+      <mx-button type="success" onclick="MxMessageBox.success('success')"
+        >你好</mx-button
+      >
+      <mx-button type="info" onclick="MxMessageBox.info('info')"
+        >你好</mx-button
+      >
+      <mx-button type="warning" onclick="MxMessageBox.warning('warning')"
+        >你好</mx-button
+      >
+      <mx-button type="danger" onclick="MxMessageBox.error('danger')"
+        >你好</mx-button
+      >
     </div>
 
-    <div>
+    <div class="dialog">
       <mx-button onclick="openDialog()">打开弹窗</mx-button>
 
       <mx-dialog id="dialog">
@@ -50,6 +60,11 @@
 
         <mx-button slot="button-after">after</mx-button>
       </mx-dialog>
+    </div>
+
+    <div class="icon">
+      <mx-icon type="error"></mx-icon>
+      <mx-icon type="success"></mx-icon>
     </div>
   </body>
 
