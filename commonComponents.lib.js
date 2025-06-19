@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         通用组件库
 // @namespace    https://greasyfork.org/zh-CN/users/1296281
-// @version      1.2.0
+// @version      1.3.0
 // @license      GPL-3.0
 // @description  通用 UI 组件和工具函数库
 // @author       ShineByPupil
@@ -207,12 +207,16 @@
   }
 
   class Button extends HTMLElement {
+    static get observedAttributes() {
+      return ["type", "circle"];
+    }
+
     constructor() {
       super();
 
       const htmlTemplate = document.createElement("template");
       htmlTemplate.innerHTML = `
-        <button>
+        <button part="button">
           <slot></slot>
         </button>
       `;
@@ -226,6 +230,7 @@
             --button-border-color: var(--border-color);
             --button-border-color-hover: var(--primary-color);
             --text-color-hover: var(--primary-color);
+            --border-radius: 5px;
           }
           ${Object.keys(colors)
             .map((type) => {
@@ -241,20 +246,23 @@
             `;
             })
             .join("\n")}
-          :host {
-            display: inline-flex;
-            width: fit-content;
-            height: 32px;
+          :host([circle]) {
+            --border-radius: 50%;
+          }
+          :host([circle]) button {
+            aspect-ratio: 1/1;
           }
         
           button {
+            box-sizing: border-box;
             display: inline-flex;
+            height: 32px;
+            padding: 8px 15px;
             align-items: center;
             font-family: inherit;
             color: var(--text-color);
-            padding: 8px 15px;
             background-color: var(--bg-color);
-            border-radius: 5px;
+            border-radius: var(--border-radius);
             border: 1px solid var(--button-border-color);
             transition: all 0.3s;
             outline: none;
@@ -392,7 +400,7 @@
     }
   }
 
-  class MessageBox extends HTMLElement {
+  class Message extends HTMLElement {
     static #instance = null;
     static observedAttributes = ["type"];
 
@@ -497,12 +505,12 @@
     }
 
     static get instance() {
-      if (!MessageBox.#instance) {
-        const el = document.createElement("mx-message-box");
+      if (!this.#instance) {
+        const el = document.createElement(getComponentName(this));
         document.documentElement.appendChild(el);
-        MessageBox.#instance = el;
+        this.#instance = el;
       }
-      return MessageBox.#instance;
+      return this.#instance;
     }
 
     #show(message, type = "info", duration) {
@@ -726,6 +734,8 @@
         "M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896m0 192a58.432 58.432 0 0 0-58.24 63.744l23.36 256.384a35.072 35.072 0 0 0 69.76 0l23.296-256.384A58.432 58.432 0 0 0 512 256m0 512a51.2 51.2 0 1 0 0-102.4 51.2 51.2 0 0 0 0 102.4",
       close:
         "M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896m0 393.664L407.936 353.6a38.4 38.4 0 1 0-54.336 54.336L457.664 512 353.6 616.064a38.4 38.4 0 1 0 54.336 54.336L512 566.336 616.064 670.4a38.4 38.4 0 1 0 54.336-54.336L566.336 512 670.4 407.936a38.4 38.4 0 1 0-54.336-54.336z",
+      setting:
+        "M600.704 64a32 32 0 0 1 30.464 22.208l35.2 109.376c14.784 7.232 28.928 15.36 42.432 24.512l112.384-24.192a32 32 0 0 1 34.432 15.36L944.32 364.8a32 32 0 0 1-4.032 37.504l-77.12 85.12a357.12 357.12 0 0 1 0 49.024l77.12 85.248a32 32 0 0 1 4.032 37.504l-88.704 153.6a32 32 0 0 1-34.432 15.296L708.8 803.904c-13.44 9.088-27.648 17.28-42.368 24.512l-35.264 109.376A32 32 0 0 1 600.704 960H423.296a32 32 0 0 1-30.464-22.208L357.696 828.48a351.616 351.616 0 0 1-42.56-24.64l-112.32 24.256a32 32 0 0 1-34.432-15.36L79.68 659.2a32 32 0 0 1 4.032-37.504l77.12-85.248a357.12 357.12 0 0 1 0-48.896l-77.12-85.248A32 32 0 0 1 79.68 364.8l88.704-153.6a32 32 0 0 1 34.432-15.296l112.32 24.256c13.568-9.152 27.776-17.408 42.56-24.64l35.2-109.312A32 32 0 0 1 423.232 64H600.64zm-23.424 64H446.72l-36.352 113.088-24.512 11.968a294.113 294.113 0 0 0-34.816 20.096l-22.656 15.36-116.224-25.088-65.28 113.152 79.68 88.192-1.92 27.136a293.12 293.12 0 0 0 0 40.192l1.92 27.136-79.808 88.192 65.344 113.152 116.224-25.024 22.656 15.296a294.113 294.113 0 0 0 34.816 20.096l24.512 11.968L446.72 896h130.688l36.48-113.152 24.448-11.904a288.282 288.282 0 0 0 34.752-20.096l22.592-15.296 116.288 25.024 65.28-113.152-79.744-88.192 1.92-27.136a293.12 293.12 0 0 0 0-40.256l-1.92-27.136 79.808-88.128-65.344-113.152-116.288 24.96-22.592-15.232a287.616 287.616 0 0 0-34.752-20.096l-24.448-11.904L577.344 128zM512 320a192 192 0 1 1 0 384 192 192 0 0 1 0-384m0 64a128 128 0 1 0 0 256 128 128 0 0 0 0-256",
     };
 
     static observedAttributes = ["type"];
@@ -784,10 +794,52 @@
     }
   }
 
+  // todo
+  class MessageBox {}
+
+  class ConcurrencyManager {
+    #activeCount = 0;
+    #queue = [];
+    #max;
+
+    constructor(max = 5) {
+      this.#max = max;
+    }
+
+    enqueue(fn) {
+      return new Promise((resolve, reject) => {
+        this.#queue.push({ fn, resolve, reject });
+        this.#next();
+      });
+    }
+
+    setConcurrency(n) {
+      this.#max = n;
+      this.#next();
+    }
+
+    #next() {
+      if (this.#activeCount >= this.#max) return;
+      const job = this.#queue.shift();
+      if (!job) return;
+
+      this.#activeCount++;
+      job
+        .fn()
+        .then(job.resolve, job.reject)
+        .finally(() => {
+          this.#activeCount--;
+          this.#next();
+        });
+    }
+  }
+
+  const getComponentName = (component) =>
+    `mx-${component.name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()}`;
   // 注册组件
-  [Input, Select, Button, Option, Switch, MessageBox, Dialog, Icon].forEach(
+  [Input, Select, Button, Option, Switch, Message, Dialog, Icon].forEach(
     (n) => {
-      const name = `mx-${n.name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()}`;
+      const name = getComponentName(n);
 
       if (!customElements.get(name)) {
         customElements.define(name, n);
@@ -797,5 +849,8 @@
     },
   );
 
-  window.MxMessageBox = MessageBox.instance;
+  Object.assign(window, {
+    MxMessage: Message.instance,
+    MxMgr: new ConcurrencyManager(),
+  });
 })();
