@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         通用组件库
 // @namespace    https://greasyfork.org/zh-CN/users/1296281
-// @version      1.3.0
+// @version      1.4.0
 // @license      GPL-3.0
 // @description  通用 UI 组件和工具函数库
 // @author       ShineByPupil
@@ -67,38 +67,34 @@
   const commonCssTemplate = document.createElement("template");
   commonCssTemplate.innerHTML = `
     <style>
+      /* 明亮模式 */
+      :host {
+        /* 主题色 */
+        ${defaultColors.join("\n")}
+        /* 明亮渐变色 */
+        ${lightColors.join("\n")}
+        --border-color: #dcdfe6;
+        --border-color-hover: #C0C4CC;
+        --bg-color: #FFFFFF;
+        --text-color: #333333;
+        --placeholder-color: #a8abb2;
+      }
       :host {
         font-family: Inter, "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", 微软雅黑, Arial, sans-serif;
       }
-      :host {
-        ${defaultColors.join("\n")}
-        ${lightColors.join("\n")}
-        --primary-color-hover: var(--primary-color-linght);
-        --border-color: #dcdfe6;
-        --border-color-hover: #C0C4CC;
-        --border-color-focus: var(--primary-color);
-        --bg-color: #FFFFFF;
-        --text-color: #333333;
-        --overlay-bg: rgba(0, 0, 0, 0.5);
-        --box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, .04), 0px 8px 20px rgba(0, 0, 0, .08);
-        --placeholder-color: #a8abb2;
+      :host([disabled]) * {
+        cursor: not-allowed;
       }
-      :host-context(.ex),
-      :host-context(.dark),
-      :host-context([data-theme="dark"]) {
+      
+      /* 夜间模式 */
+      :host-context(:is(.ex, .dark, [data-theme="dark"])) {
+        /* 夜间渐变色 */
         ${darkColors.join("\n")}
-        --primary-color-hover: var(--primary-color-dark);
         --border-color: #4C4D4F;
         --border-color-hover: #6C6E72;
-        --border-color-focus: var(--primary-color);
         --bg-color: #141414;
         --text-color: #CFD3DC;
         --placeholder-color: #8D9095;
-      }
-      
-      button {
-        color: inherit;
-        cursor: pointer;
       }
     </style>
   `;
@@ -110,7 +106,7 @@
       super();
 
       const htmlTemplate = document.createElement("template");
-      htmlTemplate.innerHTML = `<input type="text" />`;
+      htmlTemplate.innerHTML = `<input type="text" part="input" />`;
 
       const cssTemplate = document.createElement("template");
       cssTemplate.innerHTML = `
@@ -118,31 +114,45 @@
           :host {
             display: inline-flex;
             height: 32px;
-            vertical-align: top;
-          }
-          
-          input {
-            width: 100%;
-            height: 100%;
             color: var(--text-color);
-            outline: none;
-            box-sizing: border-box;
-            padding: 4px 11px;
+            border-color: var(--border-color);
             border-radius: 4px;
-            border: 1px solid var(--border-color);
-            transition: all 0.3s;
             background-color: var(--bg-color);
           }
-          
-          input:hover {
+          :host(:not([disabled]):hover) {
             border-color: var(--border-color-hover);
           }
-          input:focus {
-            border-color: var(--border-color-focus);
+          :host(:not([disabled]):focus) {
+            border-color: var(--primary-color);
             border-inline-end-width: 1px;
           }
           input::placeholder {
             color: var(--placeholder-color);
+          }
+          
+          /* 禁用 */
+          :host([disabled]) {
+            background-color: #f5f7fa;
+          }
+          :host([disabled]):host-context(:is(.ex, .dark, [data-theme="dark"])) {
+            background-color: #262727;
+          }
+          
+          input {
+            width: -webkit-fill-available;
+            height: inherit;
+            color: currentColor;
+            outline: none;
+            box-sizing: border-box;
+            padding: 4px 11px;
+            border-width: 1px;
+            border-style: solid;
+            border-color: inherit;
+            border-radius: inherit;
+            background-color: inherit;
+            vertical-align: top;
+            transition: all 0.3s;
+            text-align: inherit;
           }
         </style>
       `;
@@ -207,9 +217,7 @@
   }
 
   class Button extends HTMLElement {
-    static get observedAttributes() {
-      return ["type", "circle"];
-    }
+    static observedAttributes = ["type", "circle", "disabled", "ripple"];
 
     constructor() {
       super();
@@ -225,13 +233,42 @@
       cssTemplate.innerHTML = `
         <style>
           :host {
+            --text-color-hover: var(--primary-color);
             --bg-color: var(--bg-color);
             --bg-color-hover: var(--primary-color-light-9);
-            --button-border-color: var(--border-color);
-            --button-border-color-hover: var(--primary-color);
-            --text-color-hover: var(--primary-color);
+            --bg-color-disabled: #FFFFFF;
+            --border-color-hover: var(--primary-color);
+            --border-color-disabled: var(--border-color);
             --border-radius: 5px;
           }
+          :host-context(:is(.ex, .dark, [data-theme="dark"])) {
+            --bg-color-disabled: transparent;
+            --border-color-hover: var(--primary-color);
+          }
+          
+          /* 禁用 */
+          :host([disabled]) {
+            --text-color: #a8abb2;
+            --border-color: #dcdfe6;
+          }
+          :host([disabled]):host-context(:is(.ex, .dark, [data-theme="dark"])) {
+            --text-color: rgba(255, 255, 255, .5);
+            --border-color: #414243;
+          }
+          :host([disabled]) button {
+            background-color: var(--bg-color-disabled);
+            border-color: var(--border-color-disabled);
+          }
+          /* 圆形 */
+          :host([circle]) {
+            border-radius: 50%;
+            --border-radius: 50%;
+            aspect-ratio: 1 / 1;
+          }
+          :host([circle]) button {
+            padding: 8px;
+          }
+        
           ${Object.keys(colors)
             .map((type) => {
               return `
@@ -240,37 +277,70 @@
                 --text-color-hover: #FFFFFF;
                 --bg-color: var(--${type}-color);
                 --bg-color-hover: var(--${type}-color-light-3);
-                --button-border-color: var(--${type}-color);
-                --button-border-color-hover: var(--${type}-color-light-3);
+                --bg-color-disabled: var(--${type}-color-light-5);
+                --border-color: var(--${type}-color);
+                --border-color-hover: var(--${type}-color-light-3);
+                --border-color-disabled: var(--${type}-color-light-5);
               }
             `;
             })
             .join("\n")}
-          :host([circle]) {
-            --border-radius: 50%;
-          }
-          :host([circle]) button {
-            aspect-ratio: 1/1;
-          }
         
-          button {
-            box-sizing: border-box;
+          :host {
+            position: relative;
             display: inline-flex;
+            box-sizing: border-box;
             height: 32px;
-            padding: 8px 15px;
-            align-items: center;
-            font-family: inherit;
+            overflow: hidden;
             color: var(--text-color);
             background-color: var(--bg-color);
             border-radius: var(--border-radius);
-            border: 1px solid var(--button-border-color);
-            transition: all 0.3s;
-            outline: none;
+            border-color: var(--border-color);
           }
-          button:hover {
+          :host([disabled]) {
+            border-color: var(--border-color-disabled);
+          }
+          :host(:not([disabled]):hover) {
             color: var(--text-color-hover);
             background-color: var(--bg-color-hover);
-            border-color: var(--button-border-color-hover);
+            border-color: var(--border-color-hover);
+            transition: all 0.3s;
+          }
+          
+          button {
+            width: inherit;
+            height: inherit;
+            padding: 8px 15px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-family: inherit;
+            color: currentColor;
+            background: inherit;
+            border-width: 1px;
+            border-style: solid;
+            border-color: inherit;
+            border-radius: inherit;
+            outline: none;
+            cursor: pointer;
+          }
+          
+          /* 波纹元素 */
+          .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            background-color: rgba(255, 255, 255, 0.6);
+            animation: ripple-animation 600ms linear;
+            pointer-events: none;
+          }
+          /* 波纹动画关键帧 */
+          @keyframes ripple-animation {
+            to {
+              transform: scale(4);
+              opacity: 0;
+            }
           }
         </style>
       `;
@@ -281,6 +351,31 @@
         commonCssTemplate.content.cloneNode(true),
         cssTemplate.content,
       );
+    }
+
+    connectedCallback() {
+      if (this.hasAttribute("ripple")) {
+        this.addEventListener("click", function (e) {
+          // 计算点击位置相对于按钮的位置
+          const rect = this.getBoundingClientRect();
+          const size = Math.max(rect.width, rect.height);
+          const x = e.clientX - rect.left - size / 2;
+          const y = e.clientY - rect.top - size / 2;
+
+          // 创建波纹元素
+          const ripple = document.createElement("span");
+          ripple.classList.add("ripple");
+          ripple.style.width = ripple.style.height = `${size}px`;
+          ripple.style.left = `${x}px`;
+          ripple.style.top = `${y}px`;
+
+          // 将波纹添加到按钮，并在动画结束后移除
+          this.shadowRoot.append(ripple);
+          ripple.addEventListener("animationend", () => {
+            ripple.remove();
+          });
+        });
+      }
     }
   }
 
@@ -619,7 +714,7 @@
             border-radius: 4px;
             background-color: var(--bg-color);
             color: var(--text-color);
-            box-shadow: var(--box-shadow);
+            box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, .04), 0px 8px 20px rgba(0, 0, 0, .08);
           }
           
           header {
@@ -659,7 +754,7 @@
             right: 0;
             bottom: 0;
             z-index: 3000;
-            background: var(--overlay-bg);
+            background: rgba(0, 0, 0, 0.5);
           }
         </style>
       `;
@@ -736,6 +831,10 @@
         "M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896m0 393.664L407.936 353.6a38.4 38.4 0 1 0-54.336 54.336L457.664 512 353.6 616.064a38.4 38.4 0 1 0 54.336 54.336L512 566.336 616.064 670.4a38.4 38.4 0 1 0 54.336-54.336L566.336 512 670.4 407.936a38.4 38.4 0 1 0-54.336-54.336z",
       setting:
         "M600.704 64a32 32 0 0 1 30.464 22.208l35.2 109.376c14.784 7.232 28.928 15.36 42.432 24.512l112.384-24.192a32 32 0 0 1 34.432 15.36L944.32 364.8a32 32 0 0 1-4.032 37.504l-77.12 85.12a357.12 357.12 0 0 1 0 49.024l77.12 85.248a32 32 0 0 1 4.032 37.504l-88.704 153.6a32 32 0 0 1-34.432 15.296L708.8 803.904c-13.44 9.088-27.648 17.28-42.368 24.512l-35.264 109.376A32 32 0 0 1 600.704 960H423.296a32 32 0 0 1-30.464-22.208L357.696 828.48a351.616 351.616 0 0 1-42.56-24.64l-112.32 24.256a32 32 0 0 1-34.432-15.36L79.68 659.2a32 32 0 0 1 4.032-37.504l77.12-85.248a357.12 357.12 0 0 1 0-48.896l-77.12-85.248A32 32 0 0 1 79.68 364.8l88.704-153.6a32 32 0 0 1 34.432-15.296l112.32 24.256c13.568-9.152 27.776-17.408 42.56-24.64l35.2-109.312A32 32 0 0 1 423.232 64H600.64zm-23.424 64H446.72l-36.352 113.088-24.512 11.968a294.113 294.113 0 0 0-34.816 20.096l-22.656 15.36-116.224-25.088-65.28 113.152 79.68 88.192-1.92 27.136a293.12 293.12 0 0 0 0 40.192l1.92 27.136-79.808 88.192 65.344 113.152 116.224-25.024 22.656 15.296a294.113 294.113 0 0 0 34.816 20.096l24.512 11.968L446.72 896h130.688l36.48-113.152 24.448-11.904a288.282 288.282 0 0 0 34.752-20.096l22.592-15.296 116.288 25.024 65.28-113.152-79.744-88.192 1.92-27.136a293.12 293.12 0 0 0 0-40.256l-1.92-27.136 79.808-88.128-65.344-113.152-116.288 24.96-22.592-15.232a287.616 287.616 0 0 0-34.752-20.096l-24.448-11.904L577.344 128zM512 320a192 192 0 1 1 0 384 192 192 0 0 1 0-384m0 64a128 128 0 1 0 0 256 128 128 0 0 0 0-256",
+      search:
+        "m795.904 750.72 124.992 124.928a32 32 0 0 1-45.248 45.248L750.656 795.904a416 416 0 1 1 45.248-45.248zM480 832a352 352 0 1 0 0-704 352 352 0 0 0 0 704",
+      refresh:
+        "M771.776 794.88A384 384 0 0 1 128 512h64a320 320 0 0 0 555.712 216.448H654.72a32 32 0 1 1 0-64h149.056a32 32 0 0 1 32 32v148.928a32 32 0 1 1-64 0v-50.56zM276.288 295.616h92.992a32 32 0 0 1 0 64H220.16a32 32 0 0 1-32-32V178.56a32 32 0 0 1 64 0v50.56A384 384 0 0 1 896.128 512h-64a320 320 0 0 0-555.776-216.384z",
     };
 
     static observedAttributes = ["type"];
@@ -794,6 +893,45 @@
     }
   }
 
+  class Badge extends HTMLElement {
+    constructor() {
+      super();
+
+      const htmlTemplate = document.createElement("template");
+      htmlTemplate.innerHTML = `<slot></slot><sup></sup>`;
+
+      const cssTemplate = document.createElement("template");
+      cssTemplate.innerHTML = `
+        <style>
+          :host {
+            position: relative;
+          }
+          sup {
+            position: absolute;
+            top: 0;
+            right: 0;
+            transform: translate(50%, -50%);
+            background-color: #f56c6c;
+            border-radius: 10px;
+            padding: 0 4px;
+            color: #FFFFFF;
+          }
+        </style>
+      `;
+
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.append(htmlTemplate.content, cssTemplate.content);
+      this.sup = this.shadowRoot.querySelector("sup");
+    }
+
+    set value(val) {
+      this.sup.textContent = val;
+    }
+    get value() {
+      return this.sup.textContent;
+    }
+  }
+
   // todo
   class MessageBox {}
 
@@ -837,7 +975,7 @@
   const getComponentName = (component) =>
     `mx-${component.name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()}`;
   // 注册组件
-  [Input, Select, Button, Option, Switch, Message, Dialog, Icon].forEach(
+  [Input, Select, Button, Option, Switch, Message, Dialog, Icon, Badge].forEach(
     (n) => {
       const name = getComponentName(n);
 

@@ -8,6 +8,11 @@
       html.dark {
         background-color: #141414;
       }
+      body {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+      }
     </style>
   </head>
   <body>
@@ -19,28 +24,57 @@
       </label>
     </div>
 
-    <div class="button">
+    <div class="input">
       <mx-input
         placeholder="111"
         oninput="handleInput(event.detail)"
       ></mx-input>
 
-      <mx-button onclick="handleClick()">你好</mx-button>
-      <mx-button type="primary" onclick="MxMessageBox.primary('primary')"
+      <mx-input
+        placeholder="111"
+        oninput="handleInput(event.detail)"
+        disabled
+      ></mx-input>
+
+      <mx-button disabled>禁用</mx-button>
+    </div>
+
+    <div class="button">
+      <mx-button ripple onclick="handleClick()">你好</mx-button>
+      <mx-button ripple type="primary" onclick="MxMessageBox.primary('primary')"
         >你好</mx-button
       >
-      <mx-button type="success" onclick="MxMessageBox.success('success')"
+      <mx-button ripple type="success" onclick="MxMessageBox.success('success')"
         >你好</mx-button
       >
-      <mx-button type="info" onclick="MxMessageBox.info('info')"
+      <mx-button ripple type="info" onclick="MxMessageBox.info('info')"
         >你好</mx-button
       >
-      <mx-button type="warning" onclick="MxMessageBox.warning('warning')"
+      <mx-button ripple type="warning" onclick="MxMessageBox.warning('warning')"
         >你好</mx-button
       >
-      <mx-button type="danger" onclick="MxMessageBox.error('danger')"
+      <mx-button ripple type="danger" onclick="MxMessageBox.error('danger')"
         >你好</mx-button
       >
+    </div>
+
+    <div>
+      <mx-button disabled>禁用</mx-button>
+      <mx-button type="primary" disabled>禁用</mx-button>
+      <mx-button type="success" disabled>禁用</mx-button>
+      <mx-button type="info" disabled>禁用</mx-button>
+      <mx-button type="warning" disabled>禁用</mx-button>
+      <mx-button type="danger" disabled>禁用</mx-button>
+    </div>
+
+    <div>
+      <mx-button circle ripple>
+        <mx-icon type="search"></mx-icon>
+      </mx-button>
+
+      <mx-button circle disabled>
+        <mx-icon type="search"></mx-icon>
+      </mx-button>
     </div>
 
     <div class="dialog">
