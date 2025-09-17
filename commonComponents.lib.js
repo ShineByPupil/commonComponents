@@ -937,6 +937,231 @@
   // todo
   class MessageBox {}
 
+  class VirtualList extends HTMLElement {
+    static get observedAttributes() {
+      return ["columns", "gap"];
+    }
+    readyResolve = null;
+    readyPromise = new Promise((resolve) => (this.readyResolve = resolve));
+    itemElements = []; // 存放当前可见的 item 元素引用
+
+    #items = [];
+    #columns = 1; // 默认一列
+    #gap = 0;
+    #width = null;
+    #height = null;
+    #rowHeight = null;
+    #rowWidth = null;
+
+    constructor() {
+      super();
+
+      const htmlTemplate = document.createElement("template");
+      htmlTemplate.innerHTML = `
+        <div class="holder"></div>
+        <div class="grid"></div>
+      `;
+      const cssTemplate = document.createElement("template");
+      cssTemplate.innerHTML = `
+        <style>
+          :host {
+            width: 100%;
+            display: block;
+            max-height: 500px;
+            position: relative;
+            overflow-y: scroll;
+          }
+          .grid {
+            width: 100%;
+            display: grid;
+            position: absolute;
+            top: 0;
+            left: 0;
+          }
+          .grid-item {
+            display: flex;
+            align-items: center;
+            box-sizing: border-box;
+          }
+          .grid-item * {
+            white-space: nowrap;      /* 不换行 */
+            overflow: hidden;         /* 隐藏溢出 */
+            text-overflow: ellipsis;  /* 末尾加省略号 */
+          }
+        </style>
+      `;
+
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.append(
+        htmlTemplate.content,
+        commonCssTemplate.content.cloneNode(true),
+        cssTemplate.content,
+      );
+
+      this.itemTemplate = this.querySelector('template[slot="item"]');
+      this.grid = this.shadowRoot.querySelector(".grid");
+      this.holder = this.shadowRoot.querySelector(".holder");
+
+      ["columns", "gap"].forEach((attr) => {
+        if (!this.hasAttribute(attr)) {
+          this.setAttribute(attr, String(this[attr]));
+        }
+      });
+
+      const ro = new ResizeObserver((entries) => {
+        entries.forEach((entry) => {
+          console.log(entry);
+          const { width, height } = entry.contentRect;
+          [this.#width, this.#height] = [width, height];
+
+          if (width && height && this.readyResolve) {
+            this.readyResolve("初始化成功");
+            this.readyResolve = null;
+          }
+        });
+      });
+
+      ro.observe(this);
+
+      this.addEventListener("scroll", () => {
+        this.updateVisibleItems();
+      });
+    }
+
+    connectedCallback() {}
+
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (
+        ["columns", "gap"].includes(name) &&
+        oldValue !== newValue &&
+        this[name] !== newValue
+      ) {
+        this[name] = Number(newValue);
+      }
+    }
+
+    get items() {
+      return this.#items;
+    }
+    set items(val) {
+      this.#items = val;
+
+      const totalRows = Math.ceil(this.items.length / this.columns);
+      const contentHeight =
+        this.rowHeight * totalRows + this.gap * (totalRows - 1);
+      this.holder.style.height = contentHeight + "px";
+      this.readyPromise.then(() => this.render());
+    }
+    get columns() {
+      return this.#columns;
+    }
+    set columns(newValue) {
+      if (this.#columns !== Number(newValue)) {
+        this.#columns = Number(newValue);
+        this.readyPromise.then(() => this.render());
+      }
+    }
+    get gap() {
+      return this.#gap;
+    }
+    set gap(newValue) {
+      if (this.#gap !== Number(newValue)) {
+        this.#gap = Number(newValue);
+        this.readyPromise.then(() => this.render());
+      }
+    }
+    get rowHeight() {
+      if (this.#rowHeight) {
+        return this.#rowHeight;
+      } else if (this.#items.length) {
+        // 动态创建 -> 获得行高 -> 动态移除
+        const li = this.createItem();
+        li.setData(this.#items[0]);
+        this.shadowRoot.appendChild(li);
+        this.#rowHeight = li.getBoundingClientRect().height;
+
+        li.remove();
+        return this.#rowHeight;
+      } else {
+        throw new Error("列表无数据，无法获取行高");
+      }
+    }
+
+    render() {
+      // 清空旧元素
+      this.itemElements.forEach((element) => {
+        element.remove();
+      });
+      this.itemElements = [];
+
+      // 根据数据数量，设置最大滚动条高度
+      const totalRows = Math.ceil(this.items.length / this.columns);
+      const contentHeight =
+        this.rowHeight * totalRows + this.gap * (totalRows - 1);
+      this.holder.style.height = contentHeight + "px";
+      // 计算项目宽度
+      this.#rowWidth =
+        this.columns === 1
+          ? "100%"
+          : (this.#width - (this.columns - 1) * this.gap) / this.columns + "px";
+
+      // 项目数量
+      const rows = Math.ceil(this.#height / (this.rowHeight + this.gap) + 1);
+      const total = Math.min(this.columns * rows, this.items.length);
+      this.grid.style.gridTemplateColumns = `repeat(${this.columns}, minmax(auto, 1fr))`;
+      this.grid.style.gap = this.gap + "px";
+
+      console.table({
+        rowWidth: this.#rowWidth,
+        height: this.#height,
+        rows,
+        total,
+      });
+
+      for (let i = 0; i < total; i++) {
+        const li = this.createItem();
+        this.grid.append(li);
+        this.itemElements.push(li);
+      }
+
+      // 首次填充数据
+      this.updateVisibleItems();
+    }
+    createItem() {
+      const div = document.createElement("div");
+      div.classList.add("grid-item");
+      div.setAttribute("part", "item");
+      div.appendChild(this.itemTemplate.content.cloneNode(true));
+      div.setData = (data) => {
+        for (let key in data) {
+          const el = div.querySelector(`[data-field='${key}']`);
+          if (el) el.textContent = data[key];
+        }
+      };
+
+      return div;
+    }
+    updateVisibleItems() {
+      const scrollTop = this.scrollTop;
+      const itemTotalHeight = this.rowHeight + this.gap;
+      const firstRow = Math.floor(scrollTop / itemTotalHeight);
+      const startIndex = firstRow * this.columns;
+
+      this.grid.style.transform = `translateY(${firstRow * itemTotalHeight}px)`;
+
+      this.itemElements.forEach((element, idx) => {
+        const dataIndex = startIndex + idx;
+        element.setAttribute("data-item-index", dataIndex);
+
+        if (dataIndex < this.items.length) {
+          element.setData(this.items[dataIndex]);
+        } else {
+          element.style.setProperty("display", "none", "important"); // 超出数据范围的隐藏
+        }
+      });
+    }
+  }
+
   class ConcurrencyManager {
     #activeCount = 0;
     #queue = [];
@@ -974,23 +1199,47 @@
     }
   }
 
+  function rafThrottle(fn) {
+    let ticking = false;
+
+    return function (...args) {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          fn.apply(this, args);
+          ticking = false;
+        });
+      }
+    };
+  }
+
   const getComponentName = (component) =>
     `mx-${component.name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()}`;
   // 注册组件
-  [Input, Select, Button, Option, Switch, Message, Dialog, Icon, Badge].forEach(
-    (n) => {
-      const name = getComponentName(n);
+  [
+    Input,
+    Select,
+    Button,
+    Option,
+    Switch,
+    Message,
+    Dialog,
+    Icon,
+    Badge,
+    VirtualList,
+  ].forEach((n) => {
+    const name = getComponentName(n);
 
-      if (!customElements.get(name)) {
-        customElements.define(name, n);
-      } else {
-        console.error(`${name} 组件已注册`);
-      }
-    },
-  );
+    if (!customElements.get(name)) {
+      customElements.define(name, n);
+    } else {
+      console.error(`${name} 组件已注册`);
+    }
+  });
 
   Object.assign(window, {
     MxMessage: Message.instance,
     MxMgr: new ConcurrencyManager(),
+    MxRafThrottle: rafThrottle,
   });
 })();
