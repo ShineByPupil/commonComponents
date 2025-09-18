@@ -218,6 +218,7 @@
 
   class Button extends HTMLElement {
     static observedAttributes = ["type", "circle", "disabled", "ripple"];
+    button = null;
 
     constructor() {
       super();
@@ -351,6 +352,8 @@
         commonCssTemplate.content.cloneNode(true),
         cssTemplate.content,
       );
+
+      this.button = this.shadowRoot.querySelector("button");
     }
 
     connectedCallback() {
@@ -375,6 +378,16 @@
             ripple.remove();
           });
         });
+      }
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (name === "disabled") {
+        if (this.hasAttribute("disabled")) {
+          this.button.setAttribute("disabled", "");
+        } else {
+          this.button.removeAttribute("disabled");
+        }
       }
     }
   }
@@ -1110,13 +1123,6 @@
       const total = Math.min(this.columns * rows, this.items.length);
       this.grid.style.gridTemplateColumns = `repeat(${this.columns}, minmax(auto, 1fr))`;
       this.grid.style.gap = this.gap + "px";
-
-      console.table({
-        rowWidth: this.#rowWidth,
-        height: this.#height,
-        rows,
-        total,
-      });
 
       for (let i = 0; i < total; i++) {
         const li = this.createItem();
