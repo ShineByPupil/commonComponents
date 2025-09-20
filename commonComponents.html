@@ -33,6 +33,7 @@
       }
     </style>
   </head>
+
   <body>
     <mx-virtual-list id="list" columns="3" gap="10">
       <template slot="item">
@@ -41,10 +42,27 @@
       </template>
     </mx-virtual-list>
 
+    <script>
+      const list = document.querySelector("#list");
+      const arr = new Array(100).fill(0).map((_, i) => ({
+        name: `name${i}`,
+        value: `value${i}`,
+      }));
+
+      list.addEventListener("ready", () => {
+        list.items = arr;
+
+        console.log(list);
+      });
+    </script>
+
     <div class="switch">
       <label>
         主题色
-        <mx-switch onchange="handleChange(event.detail)"></mx-switch>
+        <mx-switch
+          onchange="handleChange(event)"
+          state-sync="switch"
+        ></mx-switch>
         <mx-switch disabled onchange="handleChange(event.detail)"></mx-switch>
       </label>
     </div>
@@ -124,6 +142,51 @@
     <div class="icon">
       <mx-icon type="success"></mx-icon>
     </div>
+
+    <div>
+      <mx-radio-group
+        state-sync="test"
+        id="radioGroup"
+        value="22"
+      ></mx-radio-group>
+
+      <br />
+
+      <mx-radio-group state-sync="test1" value="33">
+        <mx-radio label="1" value="11" disabled></mx-radio>
+        <mx-radio label="2" value="22"></mx-radio>
+        <mx-radio label="3" value="33"></mx-radio>
+      </mx-radio-group>
+
+      <br />
+
+      <mx-radio-group value="33" disabled>
+        <mx-radio label="1" value="11"></mx-radio>
+        <mx-radio label="2" value="22"></mx-radio>
+        <mx-radio label="3" value="33"></mx-radio>
+      </mx-radio-group>
+
+      <script>
+        const radioGroup = document.querySelector("#radioGroup");
+
+        setTimeout(() => {
+          radioGroup.options = [
+            { label: 1, value: 11 },
+            { label: 2, value: 22 },
+            { label: 3, value: 33 },
+          ];
+        }, 1000);
+
+        setTimeout(() => {
+          radioGroup.options.push({ label: 4, value: 44 });
+        }, 2000);
+        radioGroup.addEventListener("ready", () => {});
+
+        radioGroup.addEventListener("change", (e) => {
+          console.log(e.target.value);
+        });
+      </script>
+    </div>
   </body>
 
   <script src="commonComponents.lib.js"></script>
@@ -132,11 +195,11 @@
     let txt = "";
     window.txt = txt;
 
-    function handleChange({ value }) {
+    function handleChange(e) {
       const html = document.documentElement;
 
       html.classList.toggle("dark");
-      console.log(value);
+      console.log(e.target.value);
     }
 
     function handleInput(value) {
@@ -150,12 +213,5 @@
     function openDialog() {
       document.querySelector("#dialog")?.open();
     }
-
-    const list = document.querySelector("#list");
-    const arr = new Array(100).fill(0).map((_, i) => ({
-      name: `name${i}`,
-      value: `value${i}`,
-    }));
-    list.items = arr;
   </script>
 </html>

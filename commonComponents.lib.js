@@ -12,6 +12,7 @@
 (function () {
   "use strict";
 
+  // 主题色 + 其他配色
   const colors = {
     primary: "#4C6EF5",
     success: "#67c23a",
@@ -393,12 +394,9 @@
   }
 
   class Switch extends HTMLElement {
-    // 事件来源类型: user | broadcast
-    #currentChangeSource = "user";
-
-    static get observedAttributes() {
-      return ["checked", "disabled", "@change"];
-    }
+    static observedAttributes = ["checked", "disabled", "@change"];
+    static channel = null;
+    #value = false;
 
     constructor() {
       super();
@@ -455,39 +453,61 @@
 
       this.attachShadow({ mode: "open" });
       this.shadowRoot.append(htmlTemplate.content, cssTemplate.content);
+
+      // 初始化组件广播
+      if (!Switch.channel) {
+        Switch.channel = new BroadcastChannel("component:Switch");
+      }
     }
 
     connectedCallback() {
       const track = this.shadowRoot.querySelector(".track");
 
       track.addEventListener("click", () => this.toggle());
+
+      if (this.hasAttribute("state-sync")) {
+        Switch.channel.addEventListener("message", (e) => {
+          if (
+            e.data.key === this.getAttribute("state-sync") &&
+            this.#value !== e.data.value
+          ) {
+            this.#value = e.data.value;
+            e.data.value
+              ? this.setAttribute("checked", "")
+              : this.removeAttribute("checked");
+
+            this.dispatchEvent(
+              new CustomEvent("change", { detail: { source: "state-sync" } }),
+            );
+          }
+        });
+      }
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
       if (name === "checked" && oldValue !== newValue) {
-        const oldChecked = oldValue !== null;
-        const newChecked = newValue !== null;
-
-        this.dispatchEvent(
-          new CustomEvent("change", {
-            detail: {
-              value: newChecked,
-              oldValue: oldChecked,
-              source: this.#currentChangeSource,
-            },
-          }),
-        );
-
-        this.#currentChangeSource = "user";
+        this.value = newValue !== null;
       }
     }
 
-    get checked() {
-      return this.hasAttribute("checked");
+    get value() {
+      return this.#value;
     }
-    set checked(val) {
-      val ? this.setAttribute("checked", "") : this.removeAttribute("checked");
+    set value(value) {
+      if (value === this.#value) return;
+
+      this.#value = value;
+      this.dispatchEvent(new Event("change"));
+      value
+        ? this.setAttribute("checked", "")
+        : this.removeAttribute("checked");
+
+      if (this.hasAttribute("state-sync")) {
+        const key = this.getAttribute("state-sync");
+        Switch.channel.postMessage({ key, value });
+      }
     }
+
     get disabled() {
       return this.hasAttribute("disabled");
     }
@@ -498,13 +518,7 @@
     }
 
     toggle() {
-      if (!this.disabled) this.checked = !this.checked;
-    }
-
-    // 静默更新方法（不触发事件）
-    updateFromBroadcast(value) {
-      this.#currentChangeSource = "broadcast";
-      this.checked = value;
+      if (!this.disabled) this.value = !this.value;
     }
   }
 
@@ -950,6 +964,7 @@
   // todo
   class MessageBox {}
 
+  // 虚拟滚动
   class VirtualList extends HTMLElement {
     static get observedAttributes() {
       return ["columns", "gap"];
@@ -1041,7 +1056,11 @@
       });
     }
 
-    connectedCallback() {}
+    connectedCallback() {
+      this.readyPromise.then(() => {
+        this.dispatchEvent(new Event("ready"));
+      });
+    }
 
     attributeChangedCallback(name, oldValue, newValue) {
       if (
@@ -1096,7 +1115,7 @@
         li.remove();
         return this.#rowHeight;
       } else {
-        throw new Error("列表无数据，无法获取行高");
+        return 0;
       }
     }
 
@@ -1205,6 +1224,200 @@
     }
   }
 
+  // 单选框
+  class Radio extends HTMLElement {
+    static observedAttributes = ["value", "label", "disabled"];
+    value = "";
+    label = "";
+    #disabled = false;
+    input = null;
+    span = null;
+
+    constructor() {
+      super();
+      const htmlTemplate = document.createElement("template");
+      htmlTemplate.innerHTML = `
+      <label>
+        <input type="radio"/>
+        <span></span>
+      </label>`;
+
+      const cssTemplate = document.createElement("template");
+      cssTemplate.innerHTML = `
+        <style>
+          :host(.disabled) * {
+            cursor: not-allowed;
+            color: #a8abb2;
+          }
+          label {
+            cursor: pointer;
+          }
+          input {
+            accent-color: var(--primary-color);
+          }
+        </style>
+      `;
+
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.append(
+        htmlTemplate.content,
+        commonCssTemplate.content.cloneNode(true),
+        cssTemplate.content,
+      );
+      this.input = this.shadowRoot.querySelector("input");
+      this.span = this.shadowRoot.querySelector("span");
+    }
+
+    connectedCallback() {
+      this.input.addEventListener("click", () => {
+        this.dispatchEvent(
+          new CustomEvent("radio-select", {
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      });
+    }
+
+    attributeChangedCallback(name, oldVal, newVal) {
+      if (name === "value") {
+        this.value = this.input.value = newVal ?? "";
+      } else if (name === "label") {
+        this.label = this.span.textContent = newVal ?? "";
+      } else if (name === "disabled") {
+        this.input.disabled = newVal !== null;
+      }
+    }
+
+    get checked() {
+      return this.input.checked;
+    }
+    set checked(value) {
+      this.input.checked = value;
+    }
+
+    get disabled() {
+      return this.#disabled;
+    }
+    set disabled(value) {
+      this.#disabled = value;
+      this.input.disabled = value;
+      value
+        ? this.classList.add("disabled")
+        : this.classList.remove("disabled");
+    }
+  }
+
+  class RadioGroup extends HTMLElement {
+    static observedAttributes = ["value", "disabled"];
+    static channel = null;
+
+    #rawValue = ""; // 原始值
+    #value = ""; // 显示值
+    #options = [];
+
+    constructor() {
+      super();
+
+      const htmlTemplate = document.createElement("template");
+      htmlTemplate.innerHTML = `<slot></slot>`;
+
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.append(htmlTemplate.content);
+
+      // 初始化组件广播
+      if (!RadioGroup.channel) {
+        RadioGroup.channel = new BroadcastChannel("component:RadioGroup");
+      }
+    }
+
+    connectedCallback() {
+      this.dispatchEvent(new Event("ready"));
+
+      this.addEventListener("radio-select", (e) => {
+        this.value = e.target.value;
+      });
+
+      if (this.hasAttribute("state-sync")) {
+        RadioGroup.channel.addEventListener("message", (e) => {
+          if (
+            e.data.key === this.getAttribute("state-sync") &&
+            this.#rawValue !== e.data.value
+          ) {
+            this.#rawValue = e.data.value;
+            this.update();
+            this.dispatchEvent(new Event("state-sync"));
+          }
+        });
+      }
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+      if (name === "value") {
+        this.value = newValue;
+      } else if (name === "disabled") {
+        for (let node of this.children) {
+          node.disabled = newValue !== null || node.hasAttribute("disabled");
+        }
+      }
+    }
+
+    get value() {
+      return this.#value;
+    }
+    set value(value) {
+      if (value === this.#rawValue) return;
+
+      this.#rawValue = value;
+      this.update();
+      this.dispatchEvent(new Event("change"));
+
+      if (this.hasAttribute("state-sync")) {
+        const key = this.getAttribute("state-sync");
+        RadioGroup.channel.postMessage({ key, value });
+      }
+    }
+    get options() {
+      return this.#options;
+    }
+    set options(value) {
+      this.#options = value;
+
+      this.render();
+      this.update();
+    }
+
+    render() {
+      this.innerHTML = "";
+
+      for (let option of this.#options) {
+        const { label, value } = option;
+        const node = document.createElement("mx-radio");
+        node.disabled =
+          this.hasAttribute("disabled") || node.hasAttribute("disabled");
+
+        node.setAttribute("label", label);
+        node.setAttribute("value", value);
+
+        this.append(node);
+      }
+    }
+    update() {
+      this.#value = "";
+
+      for (let node of this.children) {
+        if (node.value === String(this.#rawValue)) {
+          node.checked = true;
+          this.#value = node.value;
+          this.setAttribute("value", node.value);
+        } else {
+          node.checked = false;
+        }
+      }
+    }
+  }
+
+  // 单选框
   function rafThrottle(fn) {
     let ticking = false;
 
@@ -1233,6 +1446,8 @@
     Icon,
     Badge,
     VirtualList,
+    Radio,
+    RadioGroup,
   ].forEach((n) => {
     const name = getComponentName(n);
 
