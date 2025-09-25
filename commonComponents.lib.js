@@ -204,7 +204,7 @@
   }
 
   // todo
-  class Option extends HTMLElement {
+  class SelectOption extends HTMLElement {
     constructor() {
       super();
     }
@@ -214,6 +214,20 @@
   class Select extends HTMLElement {
     constructor() {
       super();
+
+      const htmlTemplate = document.createElement("template");
+      htmlTemplate.innerHTML = `
+        <div class="">
+          <input/>
+        </div>
+      `;
+      const cssTemplate = document.createElement("template");
+      cssTemplate.innerHTML = ``;
+
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.append(htmlTemplate.content, cssTemplate.content);
+
+      this.input = this.shadowRoot.querySelector("input");
     }
   }
 
@@ -1245,7 +1259,8 @@
       const cssTemplate = document.createElement("template");
       cssTemplate.innerHTML = `
         <style>
-          :host(.disabled) * {
+          :host(.disabled) label,
+          :host([disabled]) label {
             cursor: not-allowed;
             color: #a8abb2;
           }
@@ -1439,7 +1454,7 @@
     Input,
     Select,
     Button,
-    Option,
+    SelectOption,
     Switch,
     Message,
     Dialog,

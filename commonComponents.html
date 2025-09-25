@@ -187,9 +187,21 @@
         });
       </script>
     </div>
+
+    <div class="select">
+      <mx-select id="select" value="33">
+        <mx-select-option label="1" value="11"></mx-select-option>
+        <mx-select-option label="2" value="22"></mx-select-option>
+        <mx-select-option label="3" value="33"></mx-select-option>
+      </mx-select>
+
+      <script>
+        const select = document.querySelector("#select");
+      </script>
+    </div>
   </body>
 
-  <script src="commonComponents.lib.js"></script>
+  <script src="./commonComponents.lib.js"></script>
 
   <script>
     let txt = "";
